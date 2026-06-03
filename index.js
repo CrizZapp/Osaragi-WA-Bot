@@ -23,6 +23,24 @@ global.opts = {
     legacy: false // Esto evita que falle al buscar la propiedad 'legacy'
 };
 
+// Agrega esta función de utilidad
+async function resolveLidToRealJid(sock, lidJid, groupJid) {
+    if (!lidJid?.endsWith("@lid") || !groupJid?.endsWith("@g.us")) return lidJid;
+    
+    try {
+        const metadata = await sock.groupMetadata(groupJid);
+        const participant = metadata.participants.find(p => p.lid === lidJid);
+        
+        // Si el participante tiene phoneNumber, lo devolvemos
+        if (participant?.phoneNumber) {
+            return participant.phoneNumber + "@s.whatsapp.net";
+        }
+    } catch (e) {
+        console.error("Error resolviendo LID:", e);
+    }
+    return lidJid;
+}
+
 
 const { 
     useMultiFileAuthState, 
