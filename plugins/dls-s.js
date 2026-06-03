@@ -2,38 +2,38 @@ import { Sticker, StickerTypes } from 'wa-sticker-formatter';
 import { downloadMediaMessage } from '@whiskeysockets/baileys';
 
 const handler = async (m, { conn, args }) => {
-    // Verificar si el mensaje contiene una imagen/video o si responde a una
-    const isQuotedImage = m.message.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage;
-    const isQuotedVideo = m.message.extendedTextMessage?.contextInfo?.quotedMessage?.videoMessage;
-    const isImage = m.message.imageMessage;
-    const isVideo = m.message.videoMessage;
+    // 1. Extraemos el mensaje citado de forma segura (igual que en tu otro bot)
+    const quoted = m.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+    
+    // 2. Validamos si hay contenido multimedia en el mensaje o en el citado
+    const media = m.message?.imageMessage || m.message?.videoMessage || quoted?.imageMessage || quoted?.videoMessage;
 
-    if (!isImage && !isVideo && !isQuotedImage && !isQuotedVideo) {
-        return m.reply('⚠️ Por favor, responde a una imagen/video o envía una con el comando *#s*');
+    if (!media) {
+        return m.reply('❌ Por favor, responde a una imagen/video o envía una con el comando *#s*');
     }
 
     try {
-        await m.reply('⏳ Procesando tu sticker...');
+        await m.reply('⏳ Fabricando sticker...');
 
-        // Detectar de dónde descargar el archivo
-        const messageToDownload = isQuotedImage || isQuotedVideo 
-            ? m.message.extendedTextMessage.contextInfo.quotedMessage 
-            : m.message;
+        // 3. Estructuramos el mensaje para downloadMediaMessage según corresponda
+        const messageToDownload = quoted 
+            ? { message: quoted } 
+            : m;
 
-        // Descargar los bytes de la imagen/video
+        // Descargar los bytes usando la función de Baileys
         const buffer = await downloadMediaMessage(
-            { message: messageToDownload },
+            messageToDownload,
             'buffer',
             {},
             { logger: console }
         );
 
-        // Si el usuario pone "circle" después del comando
+        // Si el usuario pone "circle" después del comando (#s circle)
         const esCirculo = args[0]?.toLowerCase() === 'circle';
 
-        // Configuración de la librería con nombre y autor
+        // 4. Configuración de la librería con nombre y autor
         const sticker = new Sticker(buffer, {
-            pack: 'Mi Bot Pack',       // Nombre del paquete
+            pack: 'VEE-BOT',           // Nombre del paquete
             author: 'Creador Bot',     // Autor del sticker
             type: esCirculo ? StickerTypes.CIRCLE : StickerTypes.FULL,
             quality: 70
@@ -41,7 +41,7 @@ const handler = async (m, { conn, args }) => {
 
         const stickerBuffer = await sticker.toBuffer();
 
-        // Enviar el sticker resultante al chat
+        // Enviar el sticker de vuelta al chat
         return await conn.sendMessage(m.key.remoteJid, { sticker: stickerBuffer }, { quoted: m });
 
     } catch (e) {
@@ -50,7 +50,6 @@ const handler = async (m, { conn, args }) => {
     }
 };
 
-// Configuración para que tu handler de plugins lo reconozca
 handler.command = ['s', 'sticker']; 
 
 export default handler;
