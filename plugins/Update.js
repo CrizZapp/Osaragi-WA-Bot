@@ -4,7 +4,7 @@ import chalk from 'chalk';
 const handler = async (m, { conn }) => {
     const repoUrl = 'https://github.com/CrizZapp/Osaragi-WA-Bot.git';
     
-    await m.reply('> ⏰️ Actualizando bot');
+    await m.reply('> 🕐 Actualizando bot');
 
     try {
         // Hacemos el force directamente por defecto
@@ -12,7 +12,7 @@ const handler = async (m, { conn }) => {
         const stdout = execSync('git reset --hard FETCH_HEAD');
         let output = stdout.toString().trim();
 
-        await m.reply(`> *Already to update.*\n\nVersion: ${output}\n\n♻️ *Reiniciando..*`);
+        await m.reply(`> *Already to update.*\n\n> Actualización: ${output}\n\n> ♻️ *Reiniciando..*`);
         
         console.log(chalk.hex("#00FF7F")(`\n[UPDATE] Código actualizado desde GitHub. Reiniciando...`));
         
