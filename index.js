@@ -8,6 +8,16 @@ import { exec } from "child_process";
 import readline from "readline";
 import fs from "fs";
 
+import { jidNormalizedUser } from "@whiskeysockets/baileys";
+
+global.decodeJid = (jid) => {
+    if (!jid) return jid;
+    if (/:\d+@/gi.test(jid)) {
+        return jidNormalizedUser(jid);
+    }
+    return jid;
+};
+
 // Agrega esto justo después de tus imports y antes de cualquier otra cosa
 global.opts = {
     legacy: false // Esto evita que falle al buscar la propiedad 'legacy'
@@ -94,6 +104,10 @@ async function resolveLidToRealJid(sock, lidJid, groupJid) {
     return lidJid;
 }
 
+// Agrega esto justo antes de la función startBot()
+String.prototype.decodeJid = function() {
+    return global.decodeJid(this.toString());
+};
 
 async function startBot() {
   console.clear();
