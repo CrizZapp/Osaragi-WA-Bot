@@ -8,6 +8,12 @@ import { exec } from "child_process";
 import readline from "readline";
 import fs from "fs";
 
+// Agrega esto justo después de tus imports y antes de cualquier otra cosa
+global.opts = {
+    legacy: false // Esto evita que falle al buscar la propiedad 'legacy'
+};
+
+
 const { 
     useMultiFileAuthState, 
     fetchLatestBaileysVersion, 
