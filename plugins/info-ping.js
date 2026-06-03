@@ -175,20 +175,30 @@ const handler = async (m, { conn }) => {
 <text x="1504" y="872" text-anchor="end" fill="#56b4f7" fill-opacity="0.6" font-size="14" font-family="'Courier New', monospace">© ${botname}</text>
 </svg>`;
 
-    let compositor = sharp(Buffer.from(svg)).png();
+let compositor = sharp(Buffer.from(svg)).png();
 
-    if (osaragiBuffer) {
-      // Ajuste de tamaño y desplazamiento a la izquierda (left: 1100) para compensar el espacio negro del render original
-      const char = await sharp(osaragiBuffer)
-        .resize(500, 720, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
-        .toBuffer();
+if (osaragiBuffer) {
+  // Optimizamos el render: recortamos bordes vacíos y ajustamos posición
+  const char = await sharp(osaragiBuffer)
+    .trim()
+    .resize({
+      width: 450,
+      height: 680,
+      fit: 'inside'
+    })
+    .toBuffer();
 
-      compositor = compositor.composite([
-        { input: char, left: 1100, top: 165, blend: 'over' }
-      ]);
+  compositor = compositor.composite([
+    {
+      input: char,
+      left: 1120,
+      top: 180,
+      blend: 'over'
     }
+  ]);
+}
 
-    const image = await compositor.toBuffer();
+const image = await compositor.toBuffer();
 
     await conn.sendMessage(m.key.remoteJid, { react: { text: '✅', key: m.key } });
 
@@ -207,3 +217,4 @@ const handler = async (m, { conn }) => {
 
 handler.command = ['ping', 'p', 'latencia'];
 export default handler;
+
