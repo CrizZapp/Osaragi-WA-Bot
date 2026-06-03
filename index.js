@@ -72,6 +72,29 @@ const showBanner = () => {
   });
 };
 
+// Cache para no saturar las peticiones a WhatsApp
+const lidCache = new Map();
+
+async function resolveLidToRealJid(sock, lidJid, groupJid) {
+    if (!lidJid?.endsWith("@lid") || !groupJid?.endsWith("@g.us")) return lidJid?.includes("@") ? lidJid : `${lidJid}@s.whatsapp.net`;
+    
+    if (lidCache.has(lidJid)) return lidCache.get(lidJid);
+    
+    try {
+        const metadata = await sock.groupMetadata(groupJid);
+        const participant = metadata.participants.find(p => p.lid?.split('@')[0] === lidJid.split('@')[0]);
+        
+        if (participant?.phoneNumber) {
+            lidCache.set(lidJid, participant.phoneNumber);
+            return participant.phoneNumber;
+        }
+    } catch (e) {
+        console.error("Error resolviendo LID:", e);
+    }
+    return lidJid;
+}
+
+
 async function startBot() {
   console.clear();
   await showBanner();
