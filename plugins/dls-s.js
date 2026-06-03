@@ -33,8 +33,8 @@ const handler = async (m, { conn, args }) => {
 
         // 4. Configuración de la librería con nombre y autor
         const sticker = new Sticker(buffer, {
-            pack: 'VEE-BOT',           // Nombre del paquete
-            author: 'Creador Bot',     // Autor del sticker
+            pack: '𝒪𝐒𝘼𝙶𝐀𝐑𝙞 bot',           // Nombre del paquete
+            author: '💎 Sticker 💎',     // Autor del sticker
             type: esCirculo ? StickerTypes.CIRCLE : StickerTypes.FULL,
             quality: 70
         });
