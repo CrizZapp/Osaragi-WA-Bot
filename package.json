@@ -18,6 +18,7 @@
   "@hapi/boom": "^10.0.1",
   "@whiskeysockets/baileys": "latest",
   "chalk": "^5.6.2",
+  "axios": "^1.11.0",
   "figlet": "^1.9.3",
   "node-fetch": "^3.3.2",
   "pino": "^9.9.5"
