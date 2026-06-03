@@ -19,7 +19,7 @@ const handler = async (m, { conn, from, args }) => {
 
 ✩ Uso:
 
-#code 59815678`);
+#code 59891727140`);
     }
 
     try {
@@ -30,9 +30,11 @@ const handler = async (m, { conn, from, args }) => {
             fs.mkdirSync("./subbots");
         }
 
-        if (!fs.existsSync(carpeta)) {
-            fs.mkdirSync(carpeta, { recursive: true });
+        if (fs.existsSync(carpeta)) {
+            fs.rmSync(carpeta, { recursive: true, force: true });
         }
+
+        fs.mkdirSync(carpeta, { recursive: true });
 
         const { state, saveCreds } =
             await useMultiFileAuthState(carpeta);
@@ -56,6 +58,12 @@ const handler = async (m, { conn, from, args }) => {
         });
 
         subBot.ev.on("creds.update", saveCreds);
+
+        subBot.ev.on("connection.update", (update) => {
+            console.log("SUBBOT UPDATE:", update);
+        });
+
+        await new Promise(resolve => setTimeout(resolve, 5000));
 
         const code = await subBot.requestPairingCode(numero);
 
