@@ -173,18 +173,19 @@ async function startBot() {
     const m = chatUpdate.messages[0];
     if (!m.message) return;
 
-    // 1. Identificar el remoteJid (necesario para la resolución)
+    // 1. Detectar si el sender es un LID
     const remoteJid = m.key.remoteJid;
-    
-    // 2. Si el participante o el sender tiene @lid, intentar resolverlo
     if (m.key.participant && m.key.participant.endsWith("@lid")) {
+        // Traducir el LID a número real
         m.key.participant = await resolveLidToRealJid(sock, m.key.participant, remoteJid);
     }
     
-    // 3. Importar y ejecutar el handler ya con los datos "limpios"
+    // 2. Ahora que m.key.participant ya es el número real, 
+    // tu handler recibirá el ID correcto.
     const { handler } = await import("./handler.js");
     await handler(sock, m, chatUpdate);
 });
+
 
 
   sock.ev.on("connection.update", ({ connection, lastDisconnect }) => {
