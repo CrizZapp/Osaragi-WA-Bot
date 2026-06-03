@@ -76,13 +76,85 @@ const showBanner = () => {
   });
 };
 
+const loadSubBots = async () => {
+  const subBotsDir = './sub-bots/';
+  // Si la carpeta no existe, no hacemos nada
+  if (!fs.existsSync(subBotsDir)) return;
+
+  // Leemos todas las carpetas dentro de sub-bots (cada carpeta es un número)
+  const sessions = fs.readdirSync(subBotsDir).filter(file => 
+    fs.statSync(path.join(subBotsDir, file)).isDirectory()
+  );
+
+  if (sessions.length > 0) {
+    const anchoCaja = 54;
+    console.log(clrSystem("┌──────────────────────────────────────────────────────┐"));
+    const text = `  🤖 [SUB-BOTS] Levantando ${sessions.length} sesiones...`;
+    console.log(clrSystem("│") + chalk.bold(text.padEnd(anchoCaja)) + clrSystem("│"));
+    console.log(clrSystem("└──────────────────────────────────────────────────────┘\n"));
+  }
+
+  // Iniciamos un socket por cada sesión guardada
+  for (const session of sessions) {
+    const sessionPath = path.join(subBotsDir, session);
+    const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
+    const { version } = await fetchLatestBaileysVersion();
+
+    const sockSub = makeWASocket({
+      version,
+      logger: pino({ level: "silent" }),
+      browser: ["Ubuntu", "Chrome", "20.0.0"],
+      auth: {
+        creds: state.creds,
+        keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" }))
+      },
+      markOnlineOnConnect: true,
+      syncFullHistory: false,
+    });
+
+    sockSub.ev.on("connection.update", async ({ connection, lastDisconnect }) => {
+      if (connection === "close") {
+        const reason = new Boom(lastDisconnect?.error)?.output?.statusCode;
+        if (reason === DisconnectReason.loggedOut || reason === 401 || reason === 405) {
+          // Si cerraron sesión desde el celular, borramos la carpeta
+          fs.rmSync(sessionPath, { recursive: true, force: true });
+          console.log(clrAlert(`  ⚠️ [SUB-BOT] Sesión de ${session} eliminada por desvinculación.`));
+        } else {
+            console.log(clrAlert(`  ⚠️ [SUB-BOT] Conexión de ${session} cerrada. El panel la reconectará.`));
+        }
+      }
+      if (connection === "open") {
+        if (!global.conns) global.conns = [];
+        global.conns.push(sockSub);
+        console.log(clrSuccess(`  ✅ [SUB-BOT] +${session} conectado con éxito.`));
+      }
+    });
+
+    sockSub.ev.on("creds.update", saveCreds);
+
+    sockSub.ev.on("messages.upsert", async (chatUpdate) => {
+      const mSub = chatUpdate.messages[0];
+      if (!mSub.message) return;
+      try {
+        const { handler: mainHandler } = await import("./handler.js");
+        await mainHandler(sockSub, mSub, chatUpdate);
+      } catch (error) {
+        console.error(clrAlert(`[ERROR SUB-BOT ${session}]`), error);
+      }
+    });
+    
+    // Le damos un pequeño respiro de 1 segundo entre cada sub-bot para no saturar la red ni el panel
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+};
 
 
 async function startBot() {
   console.clear();
   await showBanner();
   await loadPlugins();
-
+await loadSubBots();
+    
   const { state, saveCreds } = await useMultiFileAuthState("./session");
   const { version } = await fetchLatestBaileysVersion();
 
