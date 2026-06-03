@@ -52,14 +52,16 @@ if (global.onlyOwnersGroup && !gruposPermitidos.includes(from)) {
     const command = cmdName.toLowerCase();
 
 
+    //**.*
     const plugin = Object.values(global.plugins).find(p => 
-        p.command &&
+        p?.command &&
         (
             Array.isArray(p.command)
                 ? p.command.includes(command)
                 : p.command === command
         )
     );
+
 
 
     if (plugin) {
