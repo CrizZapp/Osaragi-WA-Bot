@@ -1,6 +1,6 @@
-import fs from 'fs';
-import pino from 'pino';
-import * as baileys from '@whiskeysockets/baileys';
+import fs from "fs";
+import pino from "pino";
+import * as baileys from "@whiskeysockets/baileys";
 
 const {
     useMultiFileAuthState,
@@ -12,22 +12,22 @@ const makeWASocket = baileys.default;
 
 const handler = async (m, { conn, from, args }) => {
 
-    const numero = args[0]?.replace(/\D/g, '');
+    const numero = args[0]?.replace(/\D/g, "");
 
     if (!numero) {
         return m.reply(`❐ *_VINCULACIÓN DE SUB-BOT_*
 
 ✩ Uso:
 
-#code 59812345678`);
+#code 59815678`);
     }
 
     try {
 
         const carpeta = `./subbots/${numero}`;
 
-        if (!fs.existsSync('./subbots')) {
-            fs.mkdirSync('./subbots');
+        if (!fs.existsSync("./subbots")) {
+            fs.mkdirSync("./subbots");
         }
 
         if (!fs.existsSync(carpeta)) {
@@ -42,18 +42,20 @@ const handler = async (m, { conn, from, args }) => {
 
         const subBot = makeWASocket({
             version,
-            logger: pino({ level: 'silent' }),
+            logger: pino({ level: "silent" }),
+            browser: ["Ubuntu", "Chrome", "20.0.0"],
             auth: {
                 creds: state.creds,
                 keys: makeCacheableSignalKeyStore(
                     state.keys,
-                    pino({ level: 'silent' })
+                    pino({ level: "fatal" })
                 )
             },
-            markOnlineOnConnect: false
+            markOnlineOnConnect: true,
+            syncFullHistory: false
         });
 
-        subBot.ev.on('creds.update', saveCreds);
+        subBot.ev.on("creds.update", saveCreds);
 
         const code = await subBot.requestPairingCode(numero);
 
@@ -91,6 +93,6 @@ const handler = async (m, { conn, from, args }) => {
     }
 };
 
-handler.command = ['code'];
+handler.command = ["code"];
 
 export default handler;
