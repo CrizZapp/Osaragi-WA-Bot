@@ -1,93 +1,89 @@
-import { createCanvas } from '@napi-rs/canvas';
+import { createCanvas, loadImage } from '@napi-rs/canvas';
+import path from 'path';
 
 const handler = async (m, { conn }) => {
-    // 1. Calcular latencia real
     const timestamp = m.messageTimestamp;
     const tiempoActual = Math.floor(Date.now() / 1000);
     const latencia = (tiempoActual - timestamp) * 1000;
     const ms = latencia > 0 ? latencia : Math.floor(Math.random() * 20) + 5;
-    const pingResultado = `${ms} ms`;
+    const pingResultado = `${ms}ms`;
 
     try {
-        // Tamaño panorámico elegante
+        // Dimensiones idénticas a tu menú para mantener proporciones
         const width = 800;
-        const height = 400;
+        const height = 450;
         const canvas = createCanvas(width, height);
         const ctx = canvas.getContext('2d');
 
-        // 🖤 FONDO NEGRO ABSOLUTO (Como tu menú)
-        ctx.fillStyle = '#000000';
-        ctx.fillRect(0, 0, width, height);
+        // 1. CARGAR TU IMAGEN DE MENÚ COMO FONDO
+        // Cambia 'menu.jpg' por la ruta real de tu foto en el panel
+        const rutaImagen = path.resolve('./menu.jpg'); 
+        try {
+            const imgFondo = await loadImage(rutaImagen);
+            ctx.drawImage(imgFondo, 0, 0, width, height);
+            
+            // Capa oscura semi-transparente encima para que los textos del ping resalten y no tapen el diseño
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+            ctx.fillRect(0, 0, width, height);
+        } catch {
+            // Si no encuentra la imagen, aplica el fondo negro puro para que no se caiga
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, width, height);
+        }
 
-        // 🩵 BORDE CELESTE RECTANGULAR (Idéntico al de tu foto)
+        // 2. BORDE CELESTE AJUSTADO (Más fino y elegante, metido hacia adentro)
         ctx.strokeStyle = '#56b4f7';
-        ctx.lineWidth = 4;
-        ctx.strokeRect(25, 25, 750, 350);
+        ctx.lineWidth = 3;
+        ctx.strokeRect(30, 30, 740, 390);
 
-        // 🤍 EFECTO DE RESPLANDOR DIFUMINADO (Homenaje al corazón blanco difuminado)
+        // 3. TEXTOS CON TIPOGRAFÍA CORREGIDA Y ALINEACIÓN LIMPIA
+        // Título de la interfaz en la esquina superior izquierda
+        ctx.font = '700 16px sans-serif';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.fillText('OSARAGI SYSTEM METRICS', 60, 80);
+
+        // Bloque del Ping (Compacto y moderno, abajo a la izquierda)
+        ctx.font = '700 24px sans-serif';
+        ctx.fillStyle = '#56b4f7';
+        ctx.fillText('LATENCY_VALUE', 60, 240);
+
+        // El número del Ping con un leve resplandor blanco muy sutil
         ctx.save();
-        ctx.shadowColor = 'rgba(255, 255, 255, 0.12)';
-        ctx.shadowBlur = 60;
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.01)';
-        ctx.beginPath();
-        ctx.arc(640, 260, 70, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-
-        // 💙 TÍTULO: OSARAGI WA BOT (Con el estilo de sombra oscura/azulada de tu texto)
-        ctx.save();
-        ctx.font = 'italic bold 42px sans-serif';
-        ctx.shadowColor = '#162d42'; // Sombra azul oscura difuminada
-        ctx.shadowBlur = 12;
-        ctx.shadowOffsetX = 3;
-        ctx.shadowOffsetY = 3;
-        ctx.fillStyle = '#3a6b9c';    // Azul/Grisáceo elegante
-        ctx.fillText('OSARAGI WA BOT', 70, 110);
-        ctx.restore();
-
-        // 💜 CRÉDITO: "by allen" (En el mismo tono morado que usaste)
-        ctx.font = 'bold 22px sans-serif';
-        ctx.fillStyle = '#8a00d4'; 
-        ctx.fillText('by allen', 70, 150);
-
-        // 📋 SUBTEXTO DE LA INTERFAZ
-        ctx.font = '15px monospace';
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
-        ctx.fillText('// SYSTEM LATENCY DETECTOR', 70, 220);
-
-        // 🔲 NÚMERO DEL PING (Blanco puro, imponente y limpio)
-        ctx.save();
-        ctx.font = 'bold 95px sans-serif';
+        ctx.font = '900 80px sans-serif';
         ctx.fillStyle = '#ffffff';
-        ctx.shadowColor = 'rgba(255, 255, 255, 0.2)';
-        ctx.shadowBlur = 15;
-        ctx.fillText(pingResultado, 70, 315);
+        ctx.shadowColor = 'rgba(255, 255, 255, 0.3)';
+        ctx.shadowBlur = 10;
+        ctx.fillText(pingResultado, 60, 330);
         ctx.restore();
 
-        // 💎 DETALLES FINOS EN LAS ESQUINAS (Estilo UI Premium)
-        ctx.font = '12px monospace';
-        ctx.fillStyle = '#56b4f7'; // Celeste del marco
-        ctx.fillText('STATUS: OPERATIONAL', 70, 355);
+        // Indicador de estado estilizado a la derecha
+        ctx.font = '700 14px sans-serif';
+        ctx.fillStyle = '#8a00d4'; // Tu morado
+        ctx.fillText('BY ALLEN', 60, 370);
 
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-        ctx.fillText('NODE_MS_RUNNING', 610, 355);
+        // Detalles de estado estilo consola premium en el lado derecho
+        ctx.textAlign = 'right';
+        ctx.font = '500 13px monospace';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.fillText('STATUS: OPERATIONAL', 740, 350);
+        ctx.fillText('HOST: PTERODACTYL NODE', 740, 370);
 
-        // 3. Convertir a Buffer de imagen
+        // 4. Convertir a Buffer
         const imageBuffer = canvas.toBuffer('image/png');
 
-        // 4. Enviar a WhatsApp
+        // 5. Enviar
         return await conn.sendMessage(
             m.key.remoteJid, 
             { 
                 image: imageBuffer, 
-                caption: `🖤 *Osaragi Latency* \n⚡ *Ping:* \`${pingResultado}\`` 
+                caption: `🖤 *Osaragi Latency* -> \`${pingResultado}\`` 
             }, 
             { quoted: m }
         );
 
     } catch (error) {
         console.error(error);
-        m.reply('❌ Ocurrió un fallo al generar la tarjeta de Osaragi.');
+        m.reply('❌ Error en el renderizado gótico.');
     }
 };
 
