@@ -1,4 +1,11 @@
 import chalk from 'chalk';
+import chalk from 'chalk';
+import { jidDecode } from '@whiskeysockets/baileys'; // Agregamos esto
+
+// Creamos la función mágica que limpia el número
+
+
+    // ... el resto de tu código sigue igual ...
 
 export const handler = async (sock, m) => {
     if (!m || !m.message) return;
@@ -52,6 +59,23 @@ if (global.onlyOwnersGroup && !gruposPermitidos.includes(from)) {
     const command = cmdName.toLowerCase();
 
 
+    const decodeJid = (jid) => {
+    if (!jid) return jid;
+    if (/:\d+@/gi.test(jid)) {
+        let decode = jidDecode(jid) || {};
+        return decode.user && decode.server ? decode.user + '@' + decode.server : jid;
+    } else return jid;
+};
+
+export const handler = async (sock, m) => {
+    if (!m || !m.message) return;
+
+    const conn = sock;
+    const from = m.key.remoteJid; 
+    
+    // ACÁ APLICAMOS LA MAGIA: Limpiamos el sender antes de usarlo
+    let rawSender = m.key.participant || m.key.remoteJid;
+    const sender = decodeJid(rawSender);
     //**.*
     const plugin = Object.values(global.plugins).find(p => 
         p?.command &&
