@@ -1,61 +1,61 @@
-import fs from "fs";
-import pino from "pino";
-import * as baileys from "@whiskeysockets/baileys";
+import fs from 'fs';
+import pino from 'pino';
+import * as baileys from '@whiskeysockets/baileys';
 
 const {
     useMultiFileAuthState,
-    makeCacheableSignalKeyStore,
-    fetchLatestBaileysVersion
+    fetchLatestBaileysVersion,
+    makeCacheableSignalKeyStore
 } = baileys;
 
 const makeWASocket = baileys.default;
 
-export default async function (m, { conn, args, command }) {
-    if (command !== "code") return;
+const handler = async (m, { conn, from, args }) => {
 
-    const numero = args[0]?.replace(/\D/g, "");
+    const numero = args[0]?.replace(/\D/g, '');
 
     if (!numero) {
-        return m.reply(
-`❐ *_VINCULACIÓN DE SUB-BOT_*
+        return m.reply(`❐ *_VINCULACIÓN DE SUB-BOT_*
 
-Uso:
-#code 59812345678`
-        );
+✩ Uso:
+
+#code 59812345678`);
     }
 
     try {
-        const sessionPath = `./subbots/${numero}`;
 
-        if (!fs.existsSync("./subbots")) {
-            fs.mkdirSync("./subbots");
+        const carpeta = `./subbots/${numero}`;
+
+        if (!fs.existsSync('./subbots')) {
+            fs.mkdirSync('./subbots');
         }
 
-        if (!fs.existsSync(sessionPath)) {
-            fs.mkdirSync(sessionPath, { recursive: true });
+        if (!fs.existsSync(carpeta)) {
+            fs.mkdirSync(carpeta, { recursive: true });
         }
 
         const { state, saveCreds } =
-            await useMultiFileAuthState(sessionPath);
+            await useMultiFileAuthState(carpeta);
 
         const { version } =
             await fetchLatestBaileysVersion();
 
-        const subSock = makeWASocket({
+        const subBot = makeWASocket({
             version,
-            logger: pino({ level: "silent" }),
+            logger: pino({ level: 'silent' }),
             auth: {
                 creds: state.creds,
                 keys: makeCacheableSignalKeyStore(
                     state.keys,
-                    pino({ level: "silent" })
+                    pino({ level: 'silent' })
                 )
-            }
+            },
+            markOnlineOnConnect: false
         });
 
-        subSock.ev.on("creds.update", saveCreds);
+        subBot.ev.on('creds.update', saveCreds);
 
-        const code = await subSock.requestPairingCode(numero);
+        const code = await subBot.requestPairingCode(numero);
 
         const texto = `❐ *_VINCULACIÓN DE SUB-BOT_*
 
@@ -71,25 +71,26 @@ Uso:
 
 🔑 *Código:* ${code}`;
 
-        const msg = await conn.sendMessage(
-            m.key.remoteJid,
+        const enviado = await conn.sendMessage(
+            from,
             { text: texto },
             { quoted: m }
         );
 
         setTimeout(async () => {
             try {
-                await conn.sendMessage(
-                    m.key.remoteJid,
-                    { delete: msg.key }
-                );
+                await conn.sendMessage(from, {
+                    delete: enviado.key
+                });
             } catch {}
         }, 60000);
 
     } catch (e) {
         console.error(e);
-        m.reply("Error al generar el código.");
+        m.reply(`❌ Error:\n${e.message}`);
     }
-}
+};
 
-export const command = ["code"];
+handler.command = ['code'];
+
+export default handler;
