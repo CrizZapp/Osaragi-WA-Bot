@@ -1,5 +1,5 @@
 import * as baileys from "@whiskeysockets/baileys";
-import { makeWASocket } from './simple.js';
+import { makeWASocket } from './lib/simple.js';
 import pino from "pino";
 import { Boom } from "@hapi/boom";
 import figlet from "figlet";
