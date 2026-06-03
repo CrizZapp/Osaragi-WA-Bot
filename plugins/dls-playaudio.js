@@ -6,7 +6,7 @@ const handler = async (m, { conn, from, args, usedPrefix, command }) => {
     }
 
     const query = args.join(' ');
-    await m.reply('⏳ _Buscando, Por favor espera.._');
+    await m.reply('> ⏳ *Buscando...* ');
 
     try {
         const apiBaseUrl = 'https://tester-web.onrender.com'; 
@@ -24,34 +24,26 @@ const handler = async (m, { conn, from, args, usedPrefix, command }) => {
             return m.reply(`❌ Error: ${data.message}`);
         }
 
-        const infoTexto = `
-╭━〔 𝖄𝖔𝖚𝖳𝖚𝖇𝖊 𝖣𝗈𝗐𝗇𝗅𝗈𝖺𝖽 〕━⬣
+
+
+  const infoTexto = `
+*🎧 ⫷ ⓄⓈⒶⒼⒶⓇⒾ ⒹⓄⓌⓁⓄⒶⒹ ⫸ 🎧*
+
 > ✦ *𝑻𝒊́𝒕𝒖𝒍𝒐::* ${data.title}
 > ✦ *𝑪𝒂𝒏𝒂𝒍:* ${data.author}
 > ✦ *𝑫𝒖𝒓𝒂𝒄𝒊𝒐́𝒏:* ${data.duration}
-
 > ☁️ *Api: AllenApi*
-> https://tester-web.onrender.com
-╰━━━━━━━━━━━━━⬣`;
+> https://tester-web.onrender.com`;
 
-              await conn.sendMessage(from, { 
+        await conn.sendMessage(from, { 
             image: { url: data.thumbnail }, 
             caption: infoTexto 
         }, { quoted: m });
 
-            await conn.sendMessage(from, { 
+          await conn.sendMessage(from, { 
             audio: { url: data.result }, 
             mimetype: 'audio/mp4',
-            fileName: `${data.title}.mp3`,
-            contextInfo: {
-                externalAdReply: {
-                    title: '🎧 D O W L O A D 🎧',
-                    body: 'Osaragi Wa Bot',
-                    previewType: 'PHOTO',
-                    thumbnailUrl: 'https://files.catbox.moe/wfsjdi.jpg',
-                    sourceUrl: 'https://tester-web.onrender.com'
-                }
-            }
+            fileName: `${data.title}.mp3`
         }, { quoted: m });
 
     } catch (error) {
