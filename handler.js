@@ -1,38 +1,26 @@
 import chalk from 'chalk';
-import { jidDecode } from '@whiskeysockets/baileys';
 
-// 1. La función mágica la ponemos afuera del handler para que esté disponible
-const decodeJid = (jid) => {
-    if (!jid) return jid;
-    if (/:\d+@/gi.test(jid)) {
-        let decode = jidDecode(jid) || {};
-        return decode.user && decode.server ? decode.user + '@' + decode.server : jid;
-    } else return jid;
-};
-
-// 2. Un único handler que procesa todo
 export const handler = async (sock, m) => {
     if (!m || !m.message) return;
 
     const conn = sock;
     const from = m.key.remoteJid; 
-    
-    // ACÁ APLICAMOS LA MAGIA: Limpiamos el sender antes de usarlo
-    let rawSender = m.key.participant || m.key.remoteJid;
-    const sender = decodeJid(rawSender);
+    const sender = m.key.participant || m.key.remoteJid;
+
 
     if (typeof global.onlyOwnersGroup === 'undefined') {
         global.onlyOwnersGroup = false; 
     }
 
-    const gruposPermitidos = [
-        "120363427856069992@g.us",
-        "120363427856070000@g.us" 
-    ];
+const gruposPermitidos = [
+    "120363427856069992@g.us",
+    "120363427856070000@g.us" 
+];
 
-    if (global.onlyOwnersGroup && !gruposPermitidos.includes(from)) {
-        return;
-    }
+if (global.onlyOwnersGroup && !gruposPermitidos.includes(from)) {
+    return;
+}
+
 
     const body =
         m.message.conversation ||
@@ -42,6 +30,7 @@ export const handler = async (sock, m) => {
 
     const usedPrefix = '#'; 
     
+
     m.reply = async (text, options = {}) => {
         return await conn.sendMessage(from, {
             text,
@@ -51,7 +40,9 @@ export const handler = async (sock, m) => {
         });
     };
 
+
     if (!body.startsWith(usedPrefix)) return;
+
 
     const [cmdName, ...args] = body
         .slice(usedPrefix.length)
@@ -60,6 +51,8 @@ export const handler = async (sock, m) => {
 
     const command = cmdName.toLowerCase();
 
+
+    //**.*
     const plugin = Object.values(global.plugins).find(p => 
         p?.command &&
         (
@@ -69,12 +62,14 @@ export const handler = async (sock, m) => {
         )
     );
 
+
+
     if (plugin) {
         try {
             await plugin(m, { 
                 conn,
                 from,
-                sender, // ¡Acá el sender ya viaja limpiecito al plugin!
+                sender,
                 usedPrefix,
                 args,
                 command
