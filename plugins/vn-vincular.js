@@ -1,6 +1,7 @@
 import * as baileys from "@whiskeysockets/baileys";
 import pino from "pino";
 import fs from "fs";
+import path from "path";
 
 const { useMultiFileAuthState, fetchLatestBaileysVersion, makeCacheableSignalKeyStore, DisconnectReason } = baileys;
 const makeWASocket = baileys.default;
@@ -36,12 +37,11 @@ const handler = async (m, { conn, args, usedPrefix, command }) => {
             syncFullHistory: false,
         });
 
-        // Evento para guardar credenciales en su respectiva carpeta
+        // Evento para guardar credenciales
         subSock.ev.on("creds.update", saveCreds);
 
-        // Si no está registrado, pedimos el código de vinculación
+        // Pedimos el código de vinculación si no está registrado
         if (!subSock.authState.creds.registered) {
-            // Un pequeño delay para asegurar que el socket inicializó bien antes de pedir el código
             setTimeout(async () => {
                 try {
                     const code = await subSock.requestPairingCode(number);
@@ -62,38 +62,36 @@ const handler = async (m, { conn, args, usedPrefix, command }) => {
 > ⚠️ *Atención:* Este código expira rápido.
                     `.trim();
 
-                    // Enviamos el código
                     let sentMsg = await m.reply(mensaje);
 
-                    // Borrar el mensaje después de 60 segundos
+                    // Borrar el mensaje después de 60 segundos por seguridad
                     setTimeout(async () => {
                         try {
                             await conn.sendMessage(m.key.remoteJid, { delete: sentMsg.key });
                         } catch (e) {
-                            console.log("Error al borrar el mensaje de código:", e);
+                            console.log("El mensaje del código ya fue eliminado o no se pudo borrar.");
                         }
                     }, 60000);
 
                 } catch (err) {
                     console.error("Error al solicitar pairing code para sub-bot:", err);
-                    m.reply("❌ Error al generar el código. Asegúrate de que el número no esté ya vinculado y tenga el formato correcto.");
+                    m.reply("❌ Error al generar el código. Asegúrate de que el número tenga el formato correcto.");
                 }
             }, 2000);
         } else {
-            m.reply(`✅ El número ${number} ya tiene una sesión activa en la carpeta /sub-bots/${number}.`);
+            m.reply(`✅ El número ${number} ya tiene una sesión activa.`);
         }
 
-        // Manejo básico de conexión del sub-bot
+        // Manejo de conexión del sub-bot
         subSock.ev.on("connection.update", async (update) => {
             const { connection, lastDisconnect } = update;
             if (connection === "close") {
                 const reason = new baileys.Boom(lastDisconnect?.error)?.output?.statusCode;
                 console.log(`[SUB-BOT ${number}] Desconectado. Razón: ${reason}`);
                 
-                // Si el usuario cierra sesión desde su cel, borramos su carpeta
                 if (reason === DisconnectReason.loggedOut) {
                     fs.rmSync(sessionPath, { recursive: true, force: true });
-                    console.log(`[SUB-BOT ${number}] Sesión eliminada por loggedOut.`);
+                    console.log(`[SUB-BOT ${number}] Sesión eliminada por cierre desde el celular.`);
                 }
             } else if (connection === "open") {
                 console.log(`[SUB-BOT ${number}] Conectado exitosamente.`);
@@ -101,8 +99,22 @@ const handler = async (m, { conn, args, usedPrefix, command }) => {
             }
         });
 
-        // Aquí deberías redirigir los mensajes del sub-bot a tu handler general
-        // subSock.ev.on("messages.upsert", async (chatUpdate) => { ... });
+        // 🔥 AQUÍ ESTÁ LA SOLUCIÓN: Conectamos el sub-bot a tu handler.js
+        subSock.ev.on("messages.upsert", async (chatUpdate) => {
+            const msg = chatUpdate.messages[0];
+            if (!msg.message) return;
+            
+            try {
+                // Importamos el handler dinámicamente asegurando la ruta desde la raíz del proyecto
+                const handlerPath = path.join(process.cwd(), 'handler.js');
+                const { handler: mainHandler } = await import(`file://${handlerPath}`);
+                
+                // Le pasamos el subSock al handler para que responda desde el número vinculado
+                await mainHandler(subSock, msg, chatUpdate);
+            } catch (err) {
+                console.error(`[SUB-BOT ${number}] Error ejecutando el handler:`, err);
+            }
+        });
 
     } catch (e) {
         console.error(e);
