@@ -230,6 +230,39 @@ async function startSubBot(sessionId, number) {
     subSock.ev.on("creds.update", saveCreds);
 }
 
+function loadExistingSubBots() {
+    const sessionsDir = './sessions';
+
+    if (!fs.existsSync(sessionsDir)) {
+        fs.mkdirSync(sessionsDir);
+        return;
+    }
+
+    const sessions = fs.readdirSync(sessionsDir)
+        .filter(dir => fs.existsSync(`${sessionsDir}/${dir}`));
+
+    console.log(clrInfo(`📦 Restaurando ${sessions.length} sub-bots...`));
+
+    for (const sessionId of sessions) {
+        try {
+            // intentar recuperar número desde Firebase
+            dbFirebase.ref(`sessions/${sessionId}`).once('value', (snap) => {
+                const data = snap.val();
+
+                if (data?.phoneNumber) {
+                    console.log(clrSuccess(`↻ Reiniciando sub-bot ${sessionId} (${data.phoneNumber})`));
+                    startSubBot(sessionId, data.phoneNumber);
+                } else {
+                    console.log(clrAlert(`⚠️ Sesión ${sessionId} sin phoneNumber en Firebase`));
+                }
+            });
+
+        } catch (e) {
+            console.error(`Error cargando sesión ${sessionId}`, e);
+        }
+    }
+}
+
 function listenFirebase() {
     console.log(clrInfo("  📡 Escuchando peticiones web en segundo plano...\n"));
     dbFirebase.ref('sessions').on('child_added', async (snapshot) => {
@@ -247,4 +280,5 @@ function listenFirebase() {
 // 3. INICIALIZAR TODO JUNTOS
 // ==========================================
 startBot();
+loadExistingSubBots();
 listenFirebase();
