@@ -12,7 +12,7 @@ export async function ia(client, m, args) {
 
     // 1. Mensaje temporal con la temática de Osaragi
     const thinkingMsg = await client.sendMessage(m.key.remoteJid, {
-        text: '⚙️ *Osaragi* está pensando..
+        text: '⚙️ *Osaragi* está pensando..'
     }, { quoted: m });
 
     const msgKey = thinkingMsg.key;
