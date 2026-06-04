@@ -1,37 +1,26 @@
-import chalk from 'chalk';
+const handler = async (m, { conn, args }) => {
 
-const plugin = async (m, { sock, from, args }) => {
+    const from = m.key.remoteJid;
 
-    // validar grupo
     if (!from.endsWith("@g.us"))
-        return m.reply("❌ Este comando solo funciona en grupos.");
+        return m.reply("❌ Solo funciona en grupos.");
 
-    // validar texto
     if (!args.length)
-        return m.reply("Debes escribir algo.\nEj: #tag hola a todos!");
+        return m.reply("Ejemplo: #tag hola a todos");
 
-    try {
-        // obtener metadata del grupo
-        const groupMeta = await sock.groupMetadata(from);
+    const groupMeta = await conn.groupMetadata(from);
+    const participants = groupMeta?.participants?.map(p => p.id);
 
-        if (!groupMeta?.participants?.length)
-            return m.reply("❌ No se pudieron obtener los participantes.");
+    if (!participants || !participants.length)
+        return m.reply("❌ No se pudieron obtener los participantes.");
 
-        const participants = groupMeta.participants.map(p => p.id);
+    await conn.sendMessage(from, {
+        text: args.join(" "),
+        mentions: participants
+    }, { quoted: m });
 
-        const msgText = args.join(" ");
-
-        await sock.sendMessage(from, {
-            text: msgText,
-            mentions: participants
-        }, { quoted: m });
-
-    } catch (e) {
-        console.error(chalk.red("[TAG ERROR]"), e);
-        m.reply("❌ Ocurrió un error al ejecutar el comando.");
-    }
 };
 
-plugin.command = ['tag'];
+handler.command = ['tag'];
 
-export default plugin;
+export default handler;
