@@ -1,11 +1,13 @@
 import fs from "fs";
 import pino from "pino";
 import * as baileys from "@whiskeysockets/baileys";
+import { Boom } from "@hapi/boom";
 
 const {
     useMultiFileAuthState,
     fetchLatestBaileysVersion,
-    makeCacheableSignalKeyStore
+    makeCacheableSignalKeyStore,
+    DisconnectReason
 } = baileys;
 
 const makeWASocket = baileys.default;
@@ -15,29 +17,19 @@ const handler = async (m, { conn, from, args }) => {
     const numero = args[0]?.replace(/\D/g, "");
 
     if (!numero) {
-        return m.reply(`❐ *_VINCULACIÓN DE SUB-BOT_*
-
-✩ Uso:
-
-#code 59891727140`);
+        return m.reply("Uso:\n#code 598XXXXXXXX");
     }
 
-    try {
+    const authPath = `./subbots/${numero}`;
 
-        const carpeta = `./subbots/${numero}`;
+    if (!fs.existsSync("./subbots")) {
+        fs.mkdirSync("./subbots");
+    }
 
-        if (!fs.existsSync("./subbots")) {
-            fs.mkdirSync("./subbots");
-        }
-
-        if (fs.existsSync(carpeta)) {
-            fs.rmSync(carpeta, { recursive: true, force: true });
-        }
-
-        fs.mkdirSync(carpeta, { recursive: true });
+    async function startSubBot() {
 
         const { state, saveCreds } =
-            await useMultiFileAuthState(carpeta);
+            await useMultiFileAuthState(authPath);
 
         const { version } =
             await fetchLatestBaileysVersion();
@@ -59,15 +51,18 @@ const handler = async (m, { conn, from, args }) => {
 
         subBot.ev.on("creds.update", saveCreds);
 
-        subBot.ev.on("connection.update", (update) => {
-            console.log("SUBBOT UPDATE:", update);
-        });
+        if (!subBot.authState.creds.registered) {
 
-        await new Promise(resolve => setTimeout(resolve, 5000));
+            setTimeout(async () => {
+                try {
 
-        const code = await subBot.requestPairingCode(numero);
+                    const code =
+                        await subBot.requestPairingCode(numero);
 
-        const texto = `❐ *_VINCULACIÓN DE SUB-BOT_*
+                    const enviado = await conn.sendMessage(
+                        from,
+                        {
+                            text: `❐ *_VINCULACIÓN DE SUB-BOT_*
 
 ✩ Sigue estos pasos para ser Sub-Bot de *Osaragi*:
 
@@ -79,26 +74,45 @@ const handler = async (m, { conn, from, args }) => {
 
 > ⚠️ *Atención:* Este código expira rápido.
 
-🔑 *Código:* ${code}`;
+🔑 *Código:* ${code}`
+                        },
+                        { quoted: m }
+                    );
 
-        const enviado = await conn.sendMessage(
-            from,
-            { text: texto },
-            { quoted: m }
-        );
+                    setTimeout(async () => {
+                        try {
+                            await conn.sendMessage(from, {
+                                delete: enviado.key
+                            });
+                        } catch {}
+                    }, 60000);
 
-        setTimeout(async () => {
-            try {
-                await conn.sendMessage(from, {
-                    delete: enviado.key
-                });
-            } catch {}
-        }, 60000);
+                } catch (e) {
+                    console.error(e);
+                }
+            }, 5000);
+        }
 
-    } catch (e) {
-        console.error(e);
-        m.reply(`❌ Error:\n${e.message}`);
+        subBot.ev.on("connection.update", ({ connection, lastDisconnect }) => {
+
+            if (connection === "open") {
+                console.log(`[SUBBOT] ${numero} conectado`);
+            }
+
+            if (connection === "close") {
+
+                const reason =
+                    new Boom(lastDisconnect?.error)
+                        ?.output?.statusCode;
+
+                if (reason !== DisconnectReason.loggedOut) {
+                    startSubBot();
+                }
+            }
+        });
     }
+
+    startSubBot();
 };
 
 handler.command = ["code"];
