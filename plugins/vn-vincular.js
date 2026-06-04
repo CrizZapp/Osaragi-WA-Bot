@@ -1,80 +1,53 @@
-import fs from "fs";
-import pino from "pino";
 import * as baileys from "@whiskeysockets/baileys";
+import pino from "pino";
+import fs from "fs";
 
-const {
-    useMultiFileAuthState,
-    fetchLatestBaileysVersion,
-    makeCacheableSignalKeyStore
-} = baileys;
-
+const { useMultiFileAuthState, fetchLatestBaileysVersion, makeCacheableSignalKeyStore, DisconnectReason } = baileys;
 const makeWASocket = baileys.default;
 
-const handler = async (m, { conn, from, args }) => {
-
-    const numero = args[0]?.replace(/\D/g, "");
-
-    if (!numero) {
-        return m.reply("Uso:\n#code 598XXXXXXXX");
+const handler = async (m, { conn, args, usedPrefix, command }) => {
+    if (!args[0]) {
+        return m.reply(`*⚠️ Formato incorrecto.*\nUsa: ${usedPrefix}${command} <número>\nEjemplo: ${usedPrefix}${command} 5491112345678`);
     }
 
+    const number = args[0].replace(/[^0-9]/g, "");
+    
+    // Crear directorio principal de sub-bots si no existe
+    if (!fs.existsSync('./sub-bots')) {
+        fs.mkdirSync('./sub-bots');
+    }
+
+    const sessionPath = `./sub-bots/${number}`;
+    
     try {
+        const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
+        const { version } = await fetchLatestBaileysVersion();
 
-        await m.reply("① Creando carpeta...");
-
-        const authPath = `./subbots/${numero}`;
-
-        if (!fs.existsSync("./subbots")) {
-            fs.mkdirSync("./subbots");
-        }
-
-        await m.reply("② Cargando auth state...");
-
-        const { state, saveCreds } =
-            await useMultiFileAuthState(authPath);
-
-        await m.reply("③ Obteniendo versión de Baileys...");
-
-        const { version } =
-            await fetchLatestBaileysVersion();
-
-        await m.reply("④ Creando socket...");
-
-        const subBot = makeWASocket({
+        // Creamos el NUEVO socket para el Sub-Bot
+        const subSock = makeWASocket({
             version,
             logger: pino({ level: "silent" }),
             browser: ["Ubuntu", "Chrome", "20.0.0"],
             auth: {
                 creds: state.creds,
-                keys: makeCacheableSignalKeyStore(
-                    state.keys,
-                    pino({ level: "fatal" })
-                )
+                keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" }))
             },
             markOnlineOnConnect: true,
-            syncFullHistory: false
+            syncFullHistory: false,
         });
 
-        subBot.ev.on("creds.update", saveCreds);
+        // Evento para guardar credenciales en su respectiva carpeta
+        subSock.ev.on("creds.update", saveCreds);
 
-        subBot.ev.on("connection.update", (update) => {
-            console.log("SUBBOT UPDATE:", update);
-        });
-
-        await m.reply("⑤ Socket creado");
-
-        setTimeout(async () => {
-
-            try {
-
-                await m.reply("⑥ Solicitando código...");
-
-                const code =
-                    await subBot.requestPairingCode(numero);
-
-                await m.reply(`⑦ Código generado:\n${code}`);
-
-                const texto = `❐ *_VINCULACIÓN DE SUB-BOT_*
+        // Si no está registrado, pedimos el código de vinculación
+        if (!subSock.authState.creds.registered) {
+            // Un pequeño delay para asegurar que el socket inicializó bien antes de pedir el código
+            setTimeout(async () => {
+                try {
+                    const code = await subSock.requestPairingCode(number);
+                    
+                    const mensaje = `
+❐ *_VINCULACIÓN DE SUB-BOT_*
 
 ✩ Sigue estos pasos para ser Sub-Bot de *Osaragi*:
 
@@ -84,35 +57,58 @@ const handler = async (m, { conn, from, args }) => {
 4 » Elige *Vincular con el número de teléfono*.
 5 » Escribe el código de abajo.
 
+> *${code}*
+
 > ⚠️ *Atención:* Este código expira rápido.
+                    `.trim();
 
-🔑 *Código:* ${code}`;
+                    // Enviamos el código
+                    let sentMsg = await m.reply(mensaje);
 
-                const enviado = await conn.sendMessage(
-                    from,
-                    { text: texto },
-                    { quoted: m }
-                );
+                    // Borrar el mensaje después de 60 segundos
+                    setTimeout(async () => {
+                        try {
+                            await conn.sendMessage(m.key.remoteJid, { delete: sentMsg.key });
+                        } catch (e) {
+                            console.log("Error al borrar el mensaje de código:", e);
+                        }
+                    }, 60000);
 
-                setTimeout(async () => {
-                    try {
-                        await conn.sendMessage(from, {
-                            delete: enviado.key
-                        });
-                    } catch {}
-                }, 60000);
+                } catch (err) {
+                    console.error("Error al solicitar pairing code para sub-bot:", err);
+                    m.reply("❌ Error al generar el código. Asegúrate de que el número no esté ya vinculado y tenga el formato correcto.");
+                }
+            }, 2000);
+        } else {
+            m.reply(`✅ El número ${number} ya tiene una sesión activa en la carpeta /sub-bots/${number}.`);
+        }
 
-            } catch (e) {
-                await m.reply(`ERROR EN PAIRING:\n${e.message}`);
+        // Manejo básico de conexión del sub-bot
+        subSock.ev.on("connection.update", async (update) => {
+            const { connection, lastDisconnect } = update;
+            if (connection === "close") {
+                const reason = new baileys.Boom(lastDisconnect?.error)?.output?.statusCode;
+                console.log(`[SUB-BOT ${number}] Desconectado. Razón: ${reason}`);
+                
+                // Si el usuario cierra sesión desde su cel, borramos su carpeta
+                if (reason === DisconnectReason.loggedOut) {
+                    fs.rmSync(sessionPath, { recursive: true, force: true });
+                    console.log(`[SUB-BOT ${number}] Sesión eliminada por loggedOut.`);
+                }
+            } else if (connection === "open") {
+                console.log(`[SUB-BOT ${number}] Conectado exitosamente.`);
+                await conn.sendMessage(m.key.remoteJid, { text: `✅ ¡Sub-Bot para *${number}* conectado con éxito!` }, { quoted: m });
             }
+        });
 
-        }, 5000);
+        // Aquí deberías redirigir los mensajes del sub-bot a tu handler general
+        // subSock.ev.on("messages.upsert", async (chatUpdate) => { ... });
 
     } catch (e) {
-        await m.reply(`ERROR GENERAL:\n${e.message}`);
+        console.error(e);
+        m.reply("❌ Ocurrió un error crítico al intentar inicializar el sub-bot.");
     }
 };
 
-handler.command = ["code"];
-
+handler.command = ['code'];
 export default handler;
