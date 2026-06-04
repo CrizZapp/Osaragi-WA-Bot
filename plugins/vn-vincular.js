@@ -14,25 +14,33 @@ const makeWASocket = baileys.default;
 
 const handler = async (m, { conn, from, args }) => {
 
+    console.log("[CODE] 1 - comando ejecutado");
+
     const numero = args[0]?.replace(/\D/g, "");
 
     if (!numero) {
         return m.reply("Uso:\n#code 598XXXXXXXX");
     }
 
-    const authPath = `./subbots/${numero}`;
+    try {
 
-    if (!fs.existsSync("./subbots")) {
-        fs.mkdirSync("./subbots");
-    }
+        const authPath = `./subbots/${numero}`;
 
-    async function startSubBot() {
+        if (!fs.existsSync("./subbots")) {
+            fs.mkdirSync("./subbots");
+        }
+
+        console.log("[CODE] 2 - carpeta ok");
 
         const { state, saveCreds } =
             await useMultiFileAuthState(authPath);
 
+        console.log("[CODE] 3 - auth state ok");
+
         const { version } =
             await fetchLatestBaileysVersion();
+
+        console.log("[CODE] 4 - version", version);
 
         const subBot = makeWASocket({
             version,
@@ -49,20 +57,43 @@ const handler = async (m, { conn, from, args }) => {
             syncFullHistory: false
         });
 
+        console.log("[CODE] 5 - socket creado");
+
         subBot.ev.on("creds.update", saveCreds);
 
-        if (!subBot.authState.creds.registered) {
+        subBot.ev.on("connection.update", (update) => {
+            console.log("[SUBBOT UPDATE]", update);
 
-            setTimeout(async () => {
-                try {
+            const { connection, lastDisconnect } = update;
 
-                    const code =
-                        await subBot.requestPairingCode(numero);
+            if (connection === "open") {
+                console.log(`[SUBBOT] ${numero} conectado`);
+            }
 
-                    const enviado = await conn.sendMessage(
-                        from,
-                        {
-                            text: `❐ *_VINCULACIÓN DE SUB-BOT_*
+            if (connection === "close") {
+                const reason =
+                    new Boom(lastDisconnect?.error)
+                        ?.output?.statusCode;
+
+                console.log("[SUBBOT CLOSE]", reason);
+            }
+        });
+
+        setTimeout(async () => {
+
+            try {
+
+                console.log("[CODE] 6 - solicitando pairing");
+
+                const code =
+                    await subBot.requestPairingCode(numero);
+
+                console.log("[CODE] 7 - code generado", code);
+
+                const enviado = await conn.sendMessage(
+                    from,
+                    {
+                        text: `❐ *_VINCULACIÓN DE SUB-BOT_*
 
 ✩ Sigue estos pasos para ser Sub-Bot de *Osaragi*:
 
@@ -75,44 +106,31 @@ const handler = async (m, { conn, from, args }) => {
 > ⚠️ *Atención:* Este código expira rápido.
 
 🔑 *Código:* ${code}`
-                        },
-                        { quoted: m }
-                    );
+                    },
+                    { quoted: m }
+                );
 
-                    setTimeout(async () => {
-                        try {
-                            await conn.sendMessage(from, {
-                                delete: enviado.key
-                            });
-                        } catch {}
-                    }, 60000);
+                setTimeout(async () => {
+                    try {
+                        await conn.sendMessage(from, {
+                            delete: enviado.key
+                        });
+                    } catch {}
+                }, 60000);
 
-                } catch (e) {
-                    console.error(e);
-                }
-            }, 5000);
-        }
+            } catch (e) {
+                console.error("[PAIRING ERROR]", e);
 
-        subBot.ev.on("connection.update", ({ connection, lastDisconnect }) => {
-
-            if (connection === "open") {
-                console.log(`[SUBBOT] ${numero} conectado`);
+                m.reply(`❌ Error:\n${e.message}`);
             }
 
-            if (connection === "close") {
+        }, 5000);
 
-                const reason =
-                    new Boom(lastDisconnect?.error)
-                        ?.output?.statusCode;
+    } catch (e) {
+        console.error("[CODE ERROR]", e);
 
-                if (reason !== DisconnectReason.loggedOut) {
-                    startSubBot();
-                }
-            }
-        });
+        m.reply(`❌ Error:\n${e.message}`);
     }
-
-    startSubBot();
 };
 
 handler.command = ["code"];
