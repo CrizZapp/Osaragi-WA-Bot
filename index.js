@@ -8,7 +8,6 @@ import readline from "readline";
 import fs from "fs";
 
 // --- INICIO INTEGRACIÓN FIREBASE ---
-import admin from 'firebase-admin';
 // --- INICIO INTEGRACIÓN FIREBASE ---
 import admin from 'firebase-admin';
 import serviceAccount from './firebase-key.json' assert { type: "json" };
