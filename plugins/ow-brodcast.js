@@ -2,14 +2,7 @@ import chalk from 'chalk';
 
 const handler = async (m, { conn, args, usedPrefix, command }) => {
     // 1. Definir el dueño permitido
-    const ownerPermitido = "268151988170813@lid";
-    const sender = m.key.participant || m.key.remoteJid;
-
-    // 2. Verificar si el que usa el comando es el dueño
-    if (sender !== ownerPermitido) {
-        return m.reply("❌ No tienes permisos para usar este comando.");
-    }
-
+    
     // 3. Validar que haya escrito un mensaje
     if (!args.length) {
         return m.reply(`Debes escribir un mensaje.\nEjemplo: *${usedPrefix}${command} Hola a todos!*`);
