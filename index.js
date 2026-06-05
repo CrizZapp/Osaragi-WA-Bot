@@ -9,13 +9,18 @@ import fs from "fs";
 
 // --- INICIO INTEGRACIÓN FIREBASE ---
 import admin from 'firebase-admin';
+// --- INICIO INTEGRACIÓN FIREBASE ---
+import admin from 'firebase-admin';
 import serviceAccount from './firebase-key.json' assert { type: "json" };
 
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
     databaseURL: "https://ingresa-dfec2-default-rtdb.firebaseio.com"
 });
-const dbFirebase = admin.database();
+// 🔄 CAMBIA ESTA LÍNEA: de const a global
+global.dbFirebase = admin.database(); 
+// --- FIN INTEGRACIÓN FIREBASE ---
+
 // --- FIN INTEGRACIÓN FIREBASE ---
 
 const { 
