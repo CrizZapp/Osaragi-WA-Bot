@@ -13,17 +13,30 @@ const handler = async (m, { args, conn }) => {
         url = 'https://' + url;
     }
 
-    await m.reply('> ⏳ *Extrayendo código fuente...*');
-
     try {
-        // En lugar de ir directo y comernos el 403, llamamos a esta API pública
-        // Le pasamos tu link y ella nos devuelve el HTML crudo
-        const apiUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-        
-        const response = await axios.get(apiUrl, { timeout: 15000 });
-        const html = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
+        // Petición directa imitando un navegador real al 100% para engañar al hosting
+        const res = await axios.get(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
+                'Cache-Control': 'max-age=0',
+                'sec-ch-ua': '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+                'sec-ch-ua-mobile': '?0',
+                'sec-ch-ua-platform': '"Windows"',
+                'sec-fetch-dest': 'document',
+                'sec-fetch-mode': 'navigate',
+                'sec-fetch-site': 'none',
+                'sec-fetch-user': '?1',
+                'upgrade-insecure-requests': '1'
+            },
+            responseType: 'text',
+            timeout: 12000
+        });
 
-        // Obtener nombre para el archivo
+        const html = res.data;
+
+        // Nombre del archivo basado en la URL
         const u = new URL(url);
         let nombre = u.hostname.replace(/^www\./, '');
 
@@ -44,7 +57,7 @@ const handler = async (m, { args, conn }) => {
 
         fs.writeFileSync(ruta, html);
 
-        // Enviamos el archivo por WhatsApp
+        // Enviar por WhatsApp
         await conn.sendMessage(
             m.key.remoteJid,
             {
@@ -59,10 +72,10 @@ const handler = async (m, { args, conn }) => {
 
     } catch (e) {
         if (e.response) {
-            return m.reply(`❌ Error de la API proxy: ${e.response.status}`);
+            return m.reply(`❌ Error al acceder: ${e.response.status} ${e.response.statusText}`);
         }
-        console.error('Error en inspect:', e);
-        m.reply('❌ No se pudo extraer el HTML de la página.');
+        console.error(e);
+        m.reply('❌ No se pudo obtener el HTML.');
     }
 };
 
