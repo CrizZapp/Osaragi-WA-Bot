@@ -11,9 +11,12 @@ const handler = async (m, { args, conn }) => {
     }
 
     try {
-        const res = await axios.get(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`, {
+        // Usamos este proxy específico que viene con bypass de Cloudflare integrado
+        const target = `https://api.scraperapi.com?api_key=demo&url=${encodeURIComponent(url)}`;
+        
+        const res = await axios.get(target, {
             responseType: 'text',
-            timeout: 10000
+            timeout: 15000
         });
 
         const html = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
