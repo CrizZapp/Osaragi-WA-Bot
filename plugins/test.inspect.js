@@ -14,29 +14,21 @@ const handler = async (m, { args, conn }) => {
     }
 
     try {
-        // Petición directa imitando un navegador real al 100% para engañar al hosting
-        const res = await axios.get(url, {
+        // Usamos un proxy crudo que no filtra ni altera la respuesta
+        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+        
+        const res = await axios.get(proxyUrl, {
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
-                'Cache-Control': 'max-age=0',
-                'sec-ch-ua': '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
-                'sec-ch-ua-mobile': '?0',
-                'sec-ch-ua-platform': '"Windows"',
-                'sec-fetch-dest': 'document',
-                'sec-fetch-mode': 'navigate',
-                'sec-fetch-site': 'none',
-                'sec-fetch-user': '?1',
-                'upgrade-insecure-requests': '1'
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
             },
             responseType: 'text',
-            timeout: 12000
+            timeout: 15000
         });
 
-        const html = res.data;
+        // Aseguramos que sea texto
+        const html = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
 
-        // Nombre del archivo basado en la URL
+        // Armamos el nombre del archivo
         const u = new URL(url);
         let nombre = u.hostname.replace(/^www\./, '');
 
@@ -57,7 +49,7 @@ const handler = async (m, { args, conn }) => {
 
         fs.writeFileSync(ruta, html);
 
-        // Enviar por WhatsApp
+        // Mandamos el archivo de una
         await conn.sendMessage(
             m.key.remoteJid,
             {
@@ -71,11 +63,10 @@ const handler = async (m, { args, conn }) => {
         fs.unlinkSync(ruta);
 
     } catch (e) {
-        if (e.response) {
-            return m.reply(`❌ Error al acceder: ${e.response.status} ${e.response.statusText}`);
-        }
+        // Mensaje de error directo con el código exacto
+        const status = e.response ? e.response.status : (e.code || 'Desconocido');
         console.error(e);
-        m.reply('❌ No se pudo obtener el HTML.');
+        m.reply(`❌ Error crudo: ${status}\nSi sigue tirando error, la URL no permite extracción externa de ninguna forma.`);
     }
 };
 
