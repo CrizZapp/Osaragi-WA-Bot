@@ -13,21 +13,15 @@ const handler = async (m, { args, conn }) => {
         url = 'https://' + url;
     }
 
-    try {
-        // Usamos Axios que ya lo tenés en tus dependencias
-        const res = await axios.get(url, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-                'Accept-Language': 'es-ES,es;q=0.8,en-US;q=0.5,en;q=0.3',
-                'Cache-Control': 'no-cache',
-                'Pragma': 'no-cache'
-            },
-            responseType: 'text',
-            timeout: 10000
-        });
+    await m.reply('> ⏳ *Extrayendo código fuente...*');
 
-        const html = res.data;
+    try {
+        // En lugar de ir directo y comernos el 403, llamamos a esta API pública
+        // Le pasamos tu link y ella nos devuelve el HTML crudo
+        const apiUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+        
+        const response = await axios.get(apiUrl, { timeout: 15000 });
+        const html = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
 
         // Obtener nombre para el archivo
         const u = new URL(url);
@@ -39,8 +33,8 @@ const handler = async (m, { args, conn }) => {
         }
 
         nombre = nombre.replace(/[^a-zA-Z0-9._-]/g, '_');
-
         const archivo = `${nombre}.html`;
+        
         const tmpDir = path.resolve('./tmp');
         const ruta = path.join(tmpDir, archivo);
 
@@ -50,7 +44,7 @@ const handler = async (m, { args, conn }) => {
 
         fs.writeFileSync(ruta, html);
 
-        // Enviamos el archivo por WhatsApp usando 'conn'
+        // Enviamos el archivo por WhatsApp
         await conn.sendMessage(
             m.key.remoteJid,
             {
@@ -64,12 +58,11 @@ const handler = async (m, { args, conn }) => {
         fs.unlinkSync(ruta);
 
     } catch (e) {
-        // Si cae por acá, mostramos el código de error exacto
         if (e.response) {
-            return m.reply(`Error al acceder a la página: ${e.response.status} ${e.response.statusText}`);
+            return m.reply(`❌ Error de la API proxy: ${e.response.status}`);
         }
-        console.error(e);
-        m.reply('No se pudo inspeccionar la página.');
+        console.error('Error en inspect:', e);
+        m.reply('❌ No se pudo extraer el HTML de la página.');
     }
 };
 
