@@ -3,32 +3,21 @@ import path from 'path';
 import axios from 'axios';
 
 const handler = async (m, { args, conn }) => {
-    if (!args[0]) {
-        return m.reply('Uso: #inspect <link>');
-    }
+    if (!args[0]) return;
 
     let url = args[0];
-
     if (!/^https?:\/\//i.test(url)) {
         url = 'https://' + url;
     }
 
     try {
-        // Usamos un proxy crudo que no filtra ni altera la respuesta
-        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-        
-        const res = await axios.get(proxyUrl, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
-            },
+        const res = await axios.get(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`, {
             responseType: 'text',
-            timeout: 15000
+            timeout: 10000
         });
 
-        // Aseguramos que sea texto
         const html = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
 
-        // Armamos el nombre del archivo
         const u = new URL(url);
         let nombre = u.hostname.replace(/^www\./, '');
 
@@ -49,7 +38,6 @@ const handler = async (m, { args, conn }) => {
 
         fs.writeFileSync(ruta, html);
 
-        // Mandamos el archivo de una
         await conn.sendMessage(
             m.key.remoteJid,
             {
@@ -63,10 +51,7 @@ const handler = async (m, { args, conn }) => {
         fs.unlinkSync(ruta);
 
     } catch (e) {
-        // Mensaje de error directo con el código exacto
-        const status = e.response ? e.response.status : (e.code || 'Desconocido');
         console.error(e);
-        m.reply(`❌ Error crudo: ${status}\nSi sigue tirando error, la URL no permite extracción externa de ninguna forma.`);
     }
 };
 
