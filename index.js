@@ -6,21 +6,7 @@ import chalk from "chalk";
 import { exec } from "child_process";
 import readline from "readline";
 import fs from "fs";
-
-// --- INICIO INTEGRACIÓN FIREBASE ---
-// --- INICIO INTEGRACIÓN FIREBASE ---
 import admin from 'firebase-admin';
-import serviceAccount from './firebase-key.json' assert { type: "json" };
-
-admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    databaseURL: "https://ingresa-dfec2-default-rtdb.firebaseio.com"
-});
-// 🔄 CAMBIA ESTA LÍNEA: de const a global
-global.dbFirebase = admin.database(); 
-// --- FIN INTEGRACIÓN FIREBASE ---
-
-// --- FIN INTEGRACIÓN FIREBASE ---
 
 const { 
     useMultiFileAuthState, 
@@ -35,6 +21,16 @@ const clrSuccess = chalk.hex("#00FF7F");
 const clrAlert = chalk.hex("#FF4500"); 
 const clrInfo = chalk.hex("#00FFFF");
 
+// .
+
+const configPath = './config.json';
+if (!fs.existsSync(configPath)) {
+    fs.writeFileSync(configPath, JSON.stringify({ useFirebaseSubBots: false }, null, 2));
+}
+const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+
+// .
+// .
 const dbPath = './database.json';
 if (!fs.existsSync(dbPath)) {
     fs.writeFileSync(dbPath, JSON.stringify({ users: {}, chats: {}, characters: {} }));
@@ -53,6 +49,8 @@ const question = (text) => {
   return new Promise((resolve) => rl.question(text, (answer) => { rl.close(); resolve(answer); }));
 };
 
+// 
+// .
 global.plugins = {};
 const loadPlugins = async () => {
   const pluginFolder = "./plugins";
@@ -88,9 +86,8 @@ const showBanner = () => {
   });
 };
 
-// ==========================================
-// 1. LÓGICA DE TU BOT PRINCIPAL (OSARAGI)
-// ==========================================
+// .
+//
 async function startBot() {
   console.clear();
   await showBanner();
@@ -166,11 +163,9 @@ async function startBot() {
   sock.ev.on("creds.update", saveCreds);
 }
 
-// ==========================================
-// 2. LÓGICA DE SUB-BOTS (DESDE LA WEB/FIREBASE)
-// ==========================================
+// .
+
 async function startSubBot(sessionId, number) {
-    // Usamos una carpeta diferente para que no pise al bot principal
     const sessionPath = `./sessions/${sessionId}`;
     if (!fs.existsSync('./sessions')) fs.mkdirSync('./sessions');
     
@@ -191,7 +186,7 @@ async function startSubBot(sessionId, number) {
         setTimeout(async () => {
             try {
                 const code = await subSock.requestPairingCode(number);
-                await dbFirebase.ref(`sessions/${sessionId}`).update({
+                await global.dbFirebase.ref(`sessions/${sessionId}`).update({
                     pairingCode: code,
                     status: 'awaiting_connection'
                 });
@@ -205,7 +200,6 @@ async function startSubBot(sessionId, number) {
     subSock.ev.on("messages.upsert", async (chatUpdate) => {
         const m = chatUpdate.messages[0];
         if (!m.message) return;
-        // Pasan por el mismo handler que tu bot principal
         const { handler } = await import("./handler.js");
         await handler(subSock, m, chatUpdate);
     });
@@ -217,13 +211,11 @@ async function startSubBot(sessionId, number) {
                 startSubBot(sessionId, number); 
             } else {
                 console.log(clrAlert(`  ➤ [WEB] Sub-Bot de ${number} se desvinculó.`));
-                await dbFirebase.ref(`sessions/${sessionId}`).update({ status: 'disconnected' });
-                // Opcional: borrar carpeta del sub-bot desvinculado
-                // fs.rmSync(sessionPath, { recursive: true, force: true });
+                await global.dbFirebase.ref(`sessions/${sessionId}`).update({ status: 'disconnected' });
             }
         }
         if (connection === 'open') {
-            await dbFirebase.ref(`sessions/${sessionId}`).update({
+            await global.dbFirebase.ref(`sessions/${sessionId}`).update({
                 status: 'connected',
                 connectedAt: Date.now()
             });
@@ -249,8 +241,7 @@ function loadExistingSubBots() {
 
     for (const sessionId of sessions) {
         try {
-            // intentar recuperar número desde Firebase
-            dbFirebase.ref(`sessions/${sessionId}`).once('value', (snap) => {
+            global.dbFirebase.ref(`sessions/${sessionId}`).once('value', (snap) => {
                 const data = snap.val();
 
                 if (data?.phoneNumber) {
@@ -269,7 +260,7 @@ function loadExistingSubBots() {
 
 function listenFirebase() {
     console.log(clrInfo("  📡 Escuchando peticiones web en segundo plano...\n"));
-    dbFirebase.ref('sessions').on('child_added', async (snapshot) => {
+    global.dbFirebase.ref('sessions').on('child_added', async (snapshot) => {
         const sessionId = snapshot.key;
         const data = snapshot.val();
         
@@ -280,9 +271,47 @@ function listenFirebase() {
     });
 }
 
-// ==========================================
-// 3. INICIALIZAR TODO JUNTOS
-// ==========================================
-startBot();
-loadExistingSubBots();
-listenFirebase();
+
+function initFirebase() {
+    if (!config.useFirebaseSubBots) {
+        console.log(clrInfo("  ℹ️  [SISTEMA] Integración Web/Firebase y Sub-Bots deshabilitada."));
+        return false;
+    }
+
+    try {
+        const keyPath = './firebase-key.json';
+        if (!fs.existsSync(keyPath)) {
+            console.log(clrAlert("  ⚠️  [FIREBASE] Archivo firebase-key.json no encontrado. Sub-bots desactivados."));
+            return false;
+        }
+
+        const serviceAccount = JSON.parse(fs.readFileSync(keyPath, 'utf8'));
+
+        admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount),
+            databaseURL: "https://ingresa-dfec2-default-rtdb.firebaseio.com"
+        });
+        
+        global.dbFirebase = admin.database();
+        return true;
+
+    } catch (error) {
+        console.log(clrAlert("  ⚠️  [FIREBASE] Error al inicializar: Verifica que firebase-key.json sea válido."));
+        console.error(error);
+        return false;
+    }
+}
+
+
+async function main() {
+    await startBot();
+
+    const isFirebaseActive = initFirebase();
+    
+    if (isFirebaseActive) {
+        loadExistingSubBots();
+        listenFirebase();
+    }
+}
+
+main();
