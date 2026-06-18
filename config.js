@@ -1,7 +1,7 @@
 import { generateWAMessageFromContent, prepareWAMessageMedia } from "@whiskeysockets/baileys";
 
 export const owners = [
-  { lid: "549111111111@lid", name: "Allen Dev" }
+  { lid: "212210794119298@lid", name: "Allen </>" }
 ];
 
 export const isOwner = (senderLid) => {
@@ -31,7 +31,7 @@ export const getGroupName = async (sock, jid) => {
   }
 };
 
-export const sendCarousel = async (sock, jid, mainText, mainFooter, cardsData) => {
+export const sendCarousel = async (sock, jid, mainText, mainFooter, cardsData, quotedMsg = null) => {
   const formattedCards = [];
 
   for (const card of cardsData) {
@@ -52,18 +52,15 @@ export const sendCarousel = async (sock, jid, mainText, mainFooter, cardsData) =
       buttonParamsJson: JSON.stringify(btn.params)
     }));
 
+    // Construcción limpia del header de la tarjeta para evitar errores de parseo
+    const cardHeader = { hasMediaAttachment: hasMedia };
+    if (card.title) cardHeader.title = card.title;
+    if (hasMedia) cardHeader.imageMessage = imageMessage;
+
     formattedCards.push({
-      header: {
-        title: card.title || "",
-        hasMediaAttachment: hasMedia,
-        imageMessage: imageMessage
-      },
-      body: {
-        text: card.text || ""
-      },
-      footer: {
-        text: card.footer || "Osaragi Bot"
-      },
+      header: cardHeader,
+      body: { text: card.text || "" },
+      footer: { text: card.footer || "Osagari Bot" },
       nativeFlowMessage: { buttons }
     });
   }
@@ -74,18 +71,16 @@ export const sendCarousel = async (sock, jid, mainText, mainFooter, cardsData) =
         interactiveMessage: {
           body: { text: mainText },
           footer: { text: mainFooter },
-          carouselMessage: {
-            cards: formattedCards
-          }
+          carouselMessage: { cards: formattedCards }
         }
       }
     }
-  }, { userJid: sock.user.id });
+  }, { userJid: sock.user.id, quoted: quotedMsg });
 
   await sock.relayMessage(jid, msg.message, { messageId: msg.key.id });
 };
 
-export const sendList = async (sock, jid, text, footer, buttonText, sections, imagePath = null) => {
+export const sendList = async (sock, jid, text, footer, buttonText, sections, imagePath = null, quotedMsg = null) => {
   let hasMedia = false;
   let imageMessage = undefined;
 
@@ -108,6 +103,10 @@ export const sendList = async (sock, jid, text, footer, buttonText, sections, im
     }
   ];
 
+  // Construcción limpia del header global
+  const msgHeader = { hasMediaAttachment: hasMedia };
+  if (hasMedia) msgHeader.imageMessage = imageMessage;
+
   const msg = generateWAMessageFromContent(jid, {
     viewOnceMessage: {
       message: {
@@ -116,18 +115,14 @@ export const sendList = async (sock, jid, text, footer, buttonText, sections, im
           deviceListMetadataVersion: 2
         },
         interactiveMessage: {
-          header: {
-            title: "",
-            hasMediaAttachment: hasMedia,
-            ...(hasMedia && { imageMessage: imageMessage })
-          },
+          header: msgHeader,
           body: { text: text },
           footer: { text: footer },
           nativeFlowMessage: { buttons }
         }
       }
     }
-  }, { userJid: sock.user.id });
+  }, { userJid: sock.user.id, quoted: quotedMsg });
 
   await sock.relayMessage(jid, msg.message, { messageId: msg.key.id });
 };
