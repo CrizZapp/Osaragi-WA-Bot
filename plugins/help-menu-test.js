@@ -3,18 +3,17 @@ import { sendList } from '../config.js';
 const menuPlugin = async (m, { conn, from, sender }) => {
   const userName = m.pushName || "Usuario";
 
+  // Estructura estricta: Solo title, description e id dentro de los rows
   const sections = [
     {
       title: "📌 PRINCIPAL",
       rows: [
         {
-          header: "Información",
           title: "🆔 Mi ID",
           description: "Ver tu identificador de cuenta",
           id: "#miid"
         },
         {
-          header: "Sistema",
           title: "⚡ Ping",
           description: "Ver velocidad de respuesta del bot",
           id: "#ping"
@@ -26,6 +25,7 @@ const menuPlugin = async (m, { conn, from, sender }) => {
       rows: [
         {
           title: "📊 Estado del bot",
+          description: "Ver recursos del sistema y uptime",
           id: "#status"
         }
       ]
@@ -38,10 +38,11 @@ const menuPlugin = async (m, { conn, from, sender }) => {
     conn,
     from,
     textoMenu,
-    "Osaragi Bot • 2026",
+    "Osagari Bot • 2026",
     "🗂️ Toca aqui ✿", 
     sections,
-    './banner.jpg' 
+    './banner.jpg',
+    m // Pasamos el mensaje original para citarlo y evitar fallos de desencriptación
   );
 };
 
