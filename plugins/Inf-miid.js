@@ -9,7 +9,7 @@ const miidPlugin = async (m, { conn, from, sender }) => {
       title: "Identificación de Cuenta",
       text: `👤 Nombre: ${userName}\n\n🆔 Identificador:\n${sender}\n\n🌍 Origen: ${groupName}`,
       footer: "Osaragi Bot • 2026",
-      image: './lib/Osagari.png', // Asegúrate de tener esta imagen en la raíz o cambiar la ruta
+      image: './you-id.jpg', // Asegúrate de tener esta imagen en la raíz o cambiar la ruta
       buttons: [
         {
           // Este tipo de botón permite copiar texto directamente al portapapeles
