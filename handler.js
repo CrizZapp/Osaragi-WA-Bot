@@ -1,4 +1,4 @@
-import chalk from 'chalk';
+import chalk from 'chalk'; // ¡Corregido a minúscula!
 
 // Inicialización global si no existe
 if (typeof global.botStatus === 'undefined') global.botStatus = {};
@@ -11,12 +11,30 @@ export const handler = async (sock, m) => {
     const from = m.key.remoteJid;
     const sender = m.key.participant || m.key.remoteJid;
 
-    // Obtención del cuerpo del mensaje
-    const body =
+    // --- OBTENCIÓN DEL CUERPO DEL MENSAJE Y BOTONES ---
+    let body =
         m.message.conversation ||
         m.message.extendedTextMessage?.text ||
         m.message.imageMessage?.caption ||
         '';
+
+    // 1. Leer respuestas de botones Interactivos / Carruseles (Native Flow)
+    if (m.message.interactiveResponseMessage?.nativeFlowResponseMessage?.paramsJson) {
+        try {
+            const params = JSON.parse(m.message.interactiveResponseMessage.nativeFlowResponseMessage.paramsJson);
+            body = params.id || body; // Extrae el ID asignado (ej: "#ping")
+        } catch (e) {
+            console.error("Error al parsear paramsJson del botón interactivo:", e);
+        }
+    } 
+    // 2. Leer respuestas de botones clásicos (Buttons Message)
+    else if (m.message.buttonsResponseMessage?.selectedButtonId) {
+        body = m.message.buttonsResponseMessage.selectedButtonId;
+    } 
+    // 3. Leer respuestas de botones de plantilla (Template Message)
+    else if (m.message.templateButtonReplyMessage?.selectedId) {
+        body = m.message.templateButtonReplyMessage.selectedId;
+    }
 
     const usedPrefix = '#';
 
@@ -43,10 +61,11 @@ export const handler = async (sock, m) => {
 
     if (!body.startsWith(usedPrefix)) return;
 
+    // Optimización con /\s+/ para evitar fallos por múltiples espacios
     const [cmdName, ...args] = body
         .slice(usedPrefix.length)
         .trim()
-        .split(' ');
+        .split(/\s+/); 
 
     const command = cmdName.toLowerCase();
 
