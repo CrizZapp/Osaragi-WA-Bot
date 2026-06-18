@@ -8,7 +8,7 @@ const menuPlugin = async (m, { conn, from, sender }) => {
   const cards = [
     {
       title: "*〇ׁ ˳ּ𑁍 ׁ✹ ⋆☤ ᗰᗴᑎᑌ ♕ OՏᗩᘜᗩᖇI ☤⋆ ✺˳ּ ׁ〇*",
-      text: `👤 Usuario: ${userName}\n🆔 Identificador:\n${sender}\n🧸Grupo: ${groupName}\n\n👉 *Opciones Principales*`,
+      text: `👤 Usuario: ${userName}\n🧸Grupo: ${groupName}\n\n*Comandos principales*`,
       footer: "𝓞𝓈𝓪𝓰𝖆𝖗𝖎 • 2026",
       image: './banner.jpg', 
       buttons: [
@@ -23,6 +23,10 @@ const menuPlugin = async (m, { conn, from, sender }) => {
         {
           type: "cta_copy",
           params: { display_text: "🧸✨️ 𝐈𝐀✨️", copy_code: "#ia" }
+        },
+        {
+          type: "cta_copy",
+          params: { display_text: "📋 𝐓𝐨𝐜𝐚 𝐩𝐚𝐫𝐚 𝐜𝐨𝐩𝐢𝐚𝐫", copy_code: "Allen es God :D" }
         }
       ]
     },
@@ -43,6 +47,10 @@ const menuPlugin = async (m, { conn, from, sender }) => {
         {
           type: "cta_copy",
           params: { display_text: "🕹 𝐌𝐮𝐬𝐢𝐜𝐚 (𝐕𝐢𝐝𝐞𝐨) 🕹", copy_code: "#play" }
+        },
+        {
+          type: "cta_copy",
+          params: { display_text: "📋 𝐓𝐨𝐜𝐚 𝐩𝐚𝐫𝐚 𝐜𝐨𝐩𝐢𝐚𝐫", copy_code: "Allen es God :D" }
         }
       ]
     },
