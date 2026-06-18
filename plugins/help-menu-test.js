@@ -1,7 +1,6 @@
 import { sendList } from '../config.js';
 
 const menuPlugin = async (m, { conn, from, sender }) => {
-  // Baileys nos da el @lid en sender, así que extraemos el nombre real del payload
   const userName = m.pushName || "Usuario";
 
   const sections = [
@@ -33,7 +32,6 @@ const menuPlugin = async (m, { conn, from, sender }) => {
     }
   ];
 
-  // Usamos userName en lugar del intento fallido de sacar el número
   const textoMenu = `° ₊‧Ƹ̵̡Ӝ̵̨̄Ʒ Bienvenido ૮3 ‧₊°\nhola ${userName}! ( ˶>w<˶)\nespero que estés teniendo un buen día! ✿\n\n◇ Comandos disponibles ◇`;
 
   await sendList(
